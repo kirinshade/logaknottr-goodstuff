@@ -4,7 +4,7 @@
 ### What's in each folder?
 * "Aliases" contains .alias files and their .md help text
 * "Snippets" contains .snippet files and their .md help text
-* "Gvars" contains .gvar files and their respective .md help text
+* "Gvars" contains .gvar files and an explanatory .md text
 
 ### Why does this exist?
 Rather than further contribute to the bloat of custom server aliases on Logaknottr, I decided to compile everything into a collection. The tradeoff to this is that my code is no longer open source. So, I wrote this!
