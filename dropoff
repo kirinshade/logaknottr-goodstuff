@@ -1,0 +1,50 @@
+embed <drac2>
+bagnames = []
+bagquantities = []
+i = 0
+bags_to_pop = []
+baglist = load_json(bags)
+
+# in this section, we mark specific bags for deletion
+# we also calculate the quantity of all items in the bag
+for bag in baglist:
+  total = 0
+  if bag[0] in ["Forage", "Fish", "Meat"]:
+    bagnames.append(bag[0])
+    for key in bag[1]:
+      total += bag[1].get(key)
+    bagquantities.append(total)
+    bags_to_pop.append(i)
+  i += 1
+
+# here we delete the bags, and adjust the cvar as necessary
+i = 0
+for item in bags_to_pop:
+  baglist.pop(item - i)
+  i += 1
+character().set_cvar("bags", dump_json(baglist)) 
+
+# here we adjust the character's gold and store the earned gold leaf coins
+i = 0
+totalmats = 0
+for bag in bagquantities:
+  totalmats += bagquantities[i]
+  i += 1
+silver = totalmats % 10
+gold = totalmats // 10
+character().coinpurse.modify_coins(0, gold, 0, silver)
+glc = min(gold // 10, 3)
+
+# here we format the output text
+i = 0
+output = "The following quantities have been removed from your scavenging bags: \n "
+for bag in bagnames:
+  output += bagnames[i] + ": " + bagquantities[i] + " \n "
+  i += 1
+output += "__Total:__ " + totalmats + " \n "
+output += "As a result, you have automagically gained " + gold + " gold and " + silver + " silver. \n \n You may now manually add " + glc + " Gold Leaf Coins using your method of choice" 
+
+</drac2> 
+-title "{{character().name}} sells their goods!"
+-desc "{{output}}"
+-footer "{{ctx.prefix + ctx.alias}}"
