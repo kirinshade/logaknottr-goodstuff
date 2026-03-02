@@ -1,0 +1,26 @@
+embed
+-title "{{name}} pays rent for their house"
+<drac2>
+n='\n'
+out = []
+
+myroll = vroll("1d100")
+outstr = myroll.full + "\n"
+if myroll.total <= 30:
+    outstr += "Your house was broken into! The thieves stole some loose coins, which has been added to your 'rent'."
+    delta = character().coinpurse.modify_coins(gp=-45)
+
+else:
+    outstr += f"Everything seems normal."
+    delta = character().coinpurse.modify_coins(gp=-30)
+
+for coinType in delta:
+ if coinType!='total':
+  out.append(f"{character().coinpurse.coin_str(coinType)}{f': ({delta[coinType]:+})' if delta[coinType] else ''} ")
+return f""" -f "They pay the rent of 30 gp | {n.join(out)}"   """
+</drac2>
+-f """Potential Breakins | Given that this house is in the slums of Logaknottr, you are subject to breakins.
+{{outstr}}"""
+-thumb <image>
+-color <color>
+-footer "{{ctx.prefix + ctx.alias}}"
