@@ -4,11 +4,12 @@ zone = "&1&"
 outstr = ""
 extras = ""
 
-# define each type of roll to deal with conditional branching better
+# perc check. used across all branches
 def perc(dc):
     percroll = vroll(s.perception.d20())
     return f""" -f "Finding a Bubble | {name} makes a DC {dc} Perception Check to find a Glimmering Bubble \n {percroll.full} {"Success!" if percroll.total >= dc else "Failure!"}" """
 
+# check to avoid slipping. used only on branch 2. the outcome affects the attack roll
 def dodge(dc):
     checks = ["Athletics", "Acrobatics"]
     check_values = [s.athletics, s.acrobatics]
@@ -22,21 +23,24 @@ def dodge(dc):
     dodgeroll = vroll(best_value.d20())
     return f""" -f "Taking a Risky Shot | {name} makes a DC {dc} {best_check.capitalize()} check to avoid falling in the creek. \n {dodgeroll.full} {"Success!" if dodgeroll.total >= dc else f"Failure! {name} slipped, causing their next roll to be made at disadvantage."}" """
 
+# nature check to identify movement pattrns. used only on branch 1. the outcome affects the attack roll
 def nat(dc):
     natroll = vroll(s.nature.d20())
     return f""" -f "Analyzing the Movements | {name} makes a DC {dc} Nature Check to better predict the bubble's movement and gain advantage \n {natroll.full} {"Success!" if natroll.total >= dc else "Failure!"}" """
 
+# arcana check to puzzle out how illusions work. used only on branch 3. the outcome affects the attack roll
 def arc(dc):
     arcroll = vroll(s.arcana.d20())
     return f""" -f "Understanding the Magic | {name} makes a DC {dc} Arcana Check to determine how the bubbles' illusions work and gain advantage \n {arcroll.full} {"Success!" if arcroll.total >= dc else "Failure!"}" """
 
+# attack roll. used across all branches. utilizes every cantrip with an attack roll, and every ranged or thrown weapon
 def attack(dc, adv="1d20"):
     soh = s.sleightOfHand
     dexAtk = []
     strAtk = []
     spellAtk = []
 
-    possibleDex = ["bow", "gun", "dart", "dagger", "yklwa", "hoopak"]
+    possibleDex = ["bow", "gun", "dart", "dagger", "yklwa", "hoopak", "sling"]
     possibleStr = ["spear", "trident", "javelin", "handaxe", "dagger", "yklwa"]
     possibleSpell = ["Chill Touch", "Fire Bolt", "Eldritch Blast", "Magic Stone", "Ray of Frost"]
 
@@ -67,8 +71,7 @@ def attack(dc, adv="1d20"):
 
     return f""" -f "Popping the Bubble | {character().name} {modsources[optimal_index]} versus AC {dc} \n {atkroll.full} {"Success! A glimmering spring petal floats to the ground, which is automagically added to your Spring Event `!bag`" if atkroll.total >= dc else "Failure! The bubble floats away."}" """
 
-# flow chart
-# Zone -> (default = easy, hard)
+# zone 1: perc, nat, attack
 if zone in ["1", "one", "meadow"]:
     outstr += "You step into a wide, open meadow bathed in the gentle warmth of the spring sun. Wildflowers in vibrant hues - blues, yellows, pinks, and purples - carpet the landscape. The air hums with the sound of buzzing bees and flitting butterflies. Tall grasses sway in a soft breeze, and the sweet scent of nectar is almost overwhelming. Here and there, you see faint, iridescent spheres drifting lazily among the flowers and grasses. \n  \n The bubbles here are relatively slow-moving but often hover low to the ground, partially obscured by flowers or tall grass. Some drift languidly on the breeze, making their path slightly unpredictable."
     extras += perc(14)
@@ -78,6 +81,8 @@ if zone in ["1", "one", "meadow"]:
             extras += attack(13, "2d20kh1")
         else:
             extras += attack(13)
+
+# zone 2: perc, dodge, attack
 elif zone in ["2", "two", "stream", "river"]:
     outstr += f"You follow the sound of running water to a lively stream cutting through a patch of young woods. Along the banks and caught in the stream's current, more Glimmering Bubbles bounce and bob erratically. \n \n These bubbles are more energetic. Some zip along the water's surface, while others get caught in small eddies or bounce off mossy rocks. They are generally faster and more unpredictable than those in the meadow. {name} will need to take risks to hit them"
     extras += perc(13)
@@ -88,9 +93,11 @@ elif zone in ["2", "two", "stream", "river"]:
         else:
             extras += attack(15, "2d20kl1")
 
+# zone 3: perc (or blindsight), arc, attack
 elif zone in ["3", "three", "woods", "feywild"]:
     outstr += "Deeper in the woods, you find a small clearing where the air feels different. Thicker, humming with latent magic. In the center stands a small, ancient-looking stone font, overflowing with water that glows with a soft, internal light. Strange, luminous fungi grow nearby, and the trees seem to lean protectively over the clearing. The Glimmering Bubbles here seem denser, phasing slightly in and out of true visibility, or guarded by minor, harmless illusions (like appearing slightly to the left of their actual position). \n \n  These bubbles are influenced by the ambient fey magic. They might shimmer, briefly turn invisible, or create minor illusory duplicates. They tend to hover near the font or drift slowly through the air, but their magical nature makes them the trickiest to target."
     if "sight" in character().get_cvar("senses", default="").lower():
+        extras += f""" -f "Seeing the Unseen | {name} has additional senses that allows them to see magically obfuscated targets, a rare thing indeed! This grants them advantage on the attack roll, and bypasses the need for a Perception check." """
         extras += attack(16, "2d20kh1")
     else:
         extras += perc(16)
@@ -101,9 +108,11 @@ elif zone in ["3", "three", "woods", "feywild"]:
             else:
                 extras += attack(16)
 
+# zone not specified
 else:
     outstr += "Whoops! Looks like you didn't specify where you wanted to hunt bubbles. The list of locations is: \n `meadow, creek, feywild` \n You can also use a number (such as 'one' or '1') instead"
 
+# section to handle rewards, designed to be compatible with the bag alias
 if "glimmering spring petal" in extras:
     bag_exists = False
     b = load_json(character().get_cvar("bags", default="[]"))
