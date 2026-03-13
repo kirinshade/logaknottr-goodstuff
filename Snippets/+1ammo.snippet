@@ -1,0 +1,55 @@
+<drac2>
+atk = &ARGS&[0]
+output = """ -f "+1 Ammunition | Your attack and damage rolls receive a +1 bonus while using this ammo" -b 1 -d 1 """
+
+# logic to handle modifications to custom counters
+def spend_cc(cc_name, amount):
+    current_cc = character().cc(cc_name)
+    remaining_cc = current_cc.mod(-amount)
+    return f""" -f "Shots Remaining | Since {amount} shots were just expended, {name} has {remaining_cc} {current_cc.name} remaining" """
+
+# sort the weapons by the type of ammo they expend
+uses_arrows = ["longbow", "shortbow", "bow"]
+uses_bolts = ["crossbow"]
+uses_sling_bullets = ["sling", "hoopak"]
+uses_needles = ["blowgun"]
+uses_renaissance_bullets = ["pistol", "musket"]
+uses_modern_bullets = ["automatic pistol", "automatic rifle", "hunting rifle", "revolver", "shotgun"]
+uses_energy_cells = ["antimatter rifle", "laser pistol", "laser rifle"]
+
+# the reason weapons is in reverse order of the above is that there are overlaps between some weapon names
+weapons = [uses_energy_cells, uses_modern_bullets, uses_renaissance_bullets, uses_needles, uses_sling_bullets, uses_bolts, uses_arrows]
+cc_names = ["+1 Energy Cells", "+1 Modern Bullets", "+1 Renaissance Bullets", "+1 Blowgun Needles", "+1 Sling Bullets", "+1 Crossbow Bolts", "+1 Arrows"]
+
+# get the unaltered longform attack based on user args
+# this will not work for: custom names, multiple candidates
+automation = None
+for attack in character().attacks:
+    if atk in attack.name.lower():
+        automation = attack
+        break
+
+# make bps damage magical if not already
+for damage_type in ["bludgeoning", "piercing", "slashing"]:
+    if damage_type in str(automation) and "magical" not in str(automation):
+        output += f""" -dtype "{damage_type}>magical {damage_type}" """
+
+# bit to handle -rr inputs
+iterations = 1 if "-rr" not in &ARGS& else int(argparse(&ARGS&).last("rr"))
+
+# This part sorts out which custom counter to use, and throws an error if none are applicable
+got_weapon = False
+i = 0
+while got_weapon == False:
+    if i > 6:
+        err(f"The attack used ({automation.name}) does not appear to be a supported weapon")
+        break
+
+    for weapon in weapons[i]:
+        if weapon in automation.name.lower():
+            output += spend_cc(cc_names[i], iterations)
+            got_weapon = True
+            break
+    i += 1
+</drac2>
+{{output}}
