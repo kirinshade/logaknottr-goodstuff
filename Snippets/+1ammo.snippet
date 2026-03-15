@@ -6,7 +6,7 @@ output = """ -f "+1 Ammunition | Your attack and damage rolls receive a +1 bonus
 def spend_cc(cc_name, amount):
     current_cc = character().cc(cc_name)
     remaining_cc = current_cc.mod(-amount)
-    return f""" -f "Shots Remaining | Since {amount} shots were just expended, {name} has {remaining_cc} {current_cc.name} remaining" """
+    return f""" -f "Shots Remaining | Since {amount} {"shot was" if amount == 1 else "shots were"} just expended, {name} has {remaining_cc} {current_cc.name} remaining" """
 
 # sort the weapons by the type of ammo they expend
 uses_arrows = ["longbow", "shortbow", "bow"]
