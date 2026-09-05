@@ -1,0 +1,143 @@
+embed <drac2>
+s = character().skills
+nl = "\n"
+pTools = character().get_cvar("pTools", "")
+eTools = character().get_cvar("eTools", "")
+bags = load_json(character().get_cvar("bags", "[]"))
+outstr = ""
+
+# establish the logic for specific tool proficiencies
+if "alchemist" in pTools.lower() or "alchemist" in eTools.lower():
+    invest_adv = True
+    invest_str = "Your proficiency with Alchemist's Supplies has granted advantage on this check"
+else:
+    invest_adv = None
+    invest_str = ""
+
+if "tinker" in pTools.lower() or "tinker" in eTools.lower():
+    sleight_adv = True
+    sleight_str = "Your proficiency with Tinker's Tools has granted advantage on this check"
+else:
+    sleight_adv = None
+    sleight_str = ""
+
+# method for adding firework to bags
+def add_bag(firework_type):
+    bag_exists = False
+    for bag in bags:
+        if bag[0] == "Fireworks":
+            bag_exists = True
+            if bag[1].get(firework_type):
+                bag[1].update({firework_type: bag[1].get(firework_type) +1})
+            else:
+                bag[1].update({firework_type: 1})
+            break
+    if not bag_exists:
+        bags.append(["Fireworks", {firework_type: 1}])
+    character().set_cvar("bags", dump_json(bags))
+
+# method for removing firework to bags
+def remove_firework(firework_type):
+    bag_exists = False
+    for bag in bags:
+        if bag[0] == "Fireworks":
+            bag_exists = True
+            if bag[1].get(firework_type):
+                bag[1].update({firework_type: bag[1].get(firework_type) - 1})
+                character().set_cvar("bags", dump_json(bags))
+            else:
+                err(f"Warning! You do not have enough {firework_type} in your Fireworks bag")
+            break
+    if not bag_exists:
+        err(f"Warning! You do not appear to have a Fireworks bag!")
+
+# method for running the investigation check
+def invest ():
+    dc = 13
+    invest_roll = vroll(s.investigation.d20(base_adv=invest_adv))
+    crit_value = str(invest_roll.result.crit)
+    hp_lost = vroll("1d6")
+    prospective_firework = None
+    if "FAIL" in crit_value:
+        if character().resistances.is_immune("fire"):
+            outcome = f"The firework explodes! {nl} Luckily, you are immune to such things"
+        elif character().resistances.is_resistant("fire"):
+            character().modify_hp(-hp_lost//2)
+            outcome = f"The firework explodes! {nl} Damage: {hp_lost.full} fire {nl} You have taken {hp_lost//2} fire damage"
+        else:
+            character().modify_hp(-hp_lost)
+            outcome = f"The firework explodes! {nl} Damage: {hp_lost.full} fire {nl} You have taken {hp_lost} fire damage"
+    elif invest_roll.total < dc:
+        outcome = "There are noticeable differences between your work and the instructions. You feel dubious about this firework."
+        prospective_firework = "Shoddy Firework"
+    else:
+        outcome = randchoice(["A perfect specimen.", "It looks good!", "There was even room for extra glitter."])
+        prospective_firework = "High Quality Firework"
+    
+    invest_dict = {
+        "text": outcome,
+        "firework": prospective_firework,
+        "roll": invest_roll
+    }
+    return invest_dict
+
+# method for running the sleight of hand check
+def sleight(firework_type):
+    dc = 13
+    sleight_roll = vroll(s.sleightOfHand.d20(base_adv=sleight_adv))
+    if sleight_roll.total >= dc:
+        add_bag(firework_type)
+        outcome = "You admire your handiwork, which is now ready to launch. Marra nods approvingly as you add it to your Fireworks bag."
+        output = True
+    else:
+        outcome = "Just from looking at this, you can tell this firework will never fire. At least, not safely. Mama Marra quickly whisks it away"
+        output = False
+    sleight_dict = {
+        "text": outcome,
+        "roll": sleight_roll,
+        "output": output
+    }
+    return sleight_dict
+
+# section to handle crafting fireworks (no args provided)
+if not &ARGS&:
+    outstr += f"""-title "{name} tries to make some fireworks" -desc "" """
+    check_1 = invest()
+    outstr += f""" -f "DC 13 Investigation| {check_1.get("roll").full} {nl} {check_1.get("text")} {invest_str}" """
+    if check_1.get("firework") != None:
+        check_2 = sleight(check_1.get("firework"))
+        outstr += f""" -f "DC 13 Sleight of Hand | {check_2.get("roll").full} {nl} {check_2.get("text")} {sleight_str}" """
+
+# section to handle launching fireworks (args: type, color)
+else:
+    firework_type = &ARGS&[0]
+    colors = ["peony", "dandelion", "heart", "lilac"]
+    try:
+        if &ARGS&[1] and &ARGS&[1].lower() in colors:
+            firework_color = &ARGS&[1]
+        else:
+            firework_color = randchoice(colors)
+    except "IndexError":
+        firework_color = randchoice(colors)
+
+    image_library = {
+        "peony": "https://media.tenor.com/D7ScOSzdcwIAAAAM/bbtangelasm-tangela.gif",
+        "dandelion": "https://media.tenor.com/-r3tPPDOR6oAAAAM/fireworks-explosion.gif",
+        "heart": "https://media.tenor.com/DvfEhLO66voAAAAM/fireworks.gif",
+        "lilac": "https://media.tenor.com/w5ItPW60aMwAAAAM/fireworks-explosion.gif",
+        "fizzle": "https://media.tenor.com/39Tj2m9EezAAAAAM/fireworks-explode.gif",
+        "fail": "https://media.tenor.com/M0gToE4Q6LMAAAAM/fireworks-fail.gif",
+        "dumb": "https://media.tenor.com/dheCY1jsLYQAAAAM/fireworks-fail.gif",
+        "continue": "https://media.tenor.com/F1y_BQqfD-wAAAAM/fireworks-shot.gif"
+    }
+
+    if firework_type.lower() == "shoddy":
+        firework_color = randchoice(["fizzle", "fail", "dumb", "continue"])
+        remove_firework("Shoddy Firework")
+    elif firework_type.lower() == "quality":
+        remove_firework("High Quality Firework")
+    else:
+        err("You did not appropriately specify a firework type. The valid types are `shoddy` and `quality`")
+    outstr += f""" -image "{image_library.get(firework_color)}" -title "{name} launches a {firework_type.lower()} firework!" """
+return outstr
+</drac2>
