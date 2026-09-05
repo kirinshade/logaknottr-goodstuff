@@ -34,9 +34,7 @@ def format_output(tallies, gold):
             output += str(key) + ": " + str(tallies.get(key)) + " \n"
             r_total += tallies.get(key)
         output += "__Total__: " + r_total + " \n"
-    output += f"""As a result, you have automagically gained {gold.get("gold")} gold 
-    and {gold.get("silver")} silver. \n \n You may now manually add {gold.get("glc")} 
-    Gold Leaf Coins using your method of choice"""
+    output += f"""As a result, you have automagically gained {gold.get("gold")} gold and {gold.get("silver")} silver. \n \n You may now manually add {gold.get("glc")} Gold Leaf Coins using your method of choice"""
     return output
 
 bags = load_json(character().get_cvar("bags", "[]"))
